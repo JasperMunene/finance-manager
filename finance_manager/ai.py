@@ -1,0 +1,44 @@
+import os
+import google.generativeai as genai
+
+# Configure the API key
+genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+model = genai.GenerativeModel('gemini-1.5-flash')
+
+
+def categorize_transaction(description):
+    prompt = f"Categorize the following transaction description into a standard financial category (e.g., Food, Utilities, Entertainment, etc.):\n\"{description}\""
+
+    try:
+        # Generate content using the model
+        response = model.generate_content([prompt])
+
+        return response
+    except Exception as e:
+        print(f"Error categorizing transaction: {e}")
+        return "Uncategorized"
+
+
+def generate_financial_advice(transactions):
+    # Summarize the transactions
+    summary = "\n".join([
+        f"{txn['type'].capitalize()}: {txn['amount']} in {txn['category']}"
+        for txn in transactions
+    ])
+
+    # Create the prompt for generating advice
+    prompt = f"""
+    Analyze the following financial transactions and provide actionable advice to improve savings and manage expenses:
+
+    {summary}
+
+    Provide your advice in bullet points.
+    """
+
+    try:
+        # Generate content using the model
+        response = model.generate_content([prompt])
+        return response
+    except Exception as e:
+        print(f"Error generating financial advice: {e}")
+        return "No advice available at the moment."
