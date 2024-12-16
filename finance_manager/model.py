@@ -12,3 +12,11 @@ class User(Base):
     email = Column(String(100), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)  # Store hashed password
     transactions = relationship('Transaction', back_populates='user')
+
+class Category(Base):
+    __tablename__ = 'categories'
+
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50), unique=True, nullable=False)
+    transactions = relationship('Transaction', back_populates='category')
