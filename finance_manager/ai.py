@@ -1,5 +1,9 @@
 import os
+from dotenv import load_dotenv
 import google.generativeai as genai
+
+# Load environment variables
+load_dotenv()
 
 # Configure the API key
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
@@ -13,7 +17,11 @@ def categorize_transaction(description):
         # Generate content using the model
         response = model.generate_content([prompt])
 
-        return response
+        # Access the generated response text (assuming 'content' is the correct field)
+        category_name = response.candidates[0].content
+
+        print(category_name)
+        return category_name
     except Exception as e:
         print(f"Error categorizing transaction: {e}")
         return "Uncategorized"
@@ -38,7 +46,13 @@ def generate_financial_advice(transactions):
     try:
         # Generate content using the model
         response = model.generate_content([prompt])
-        return response
+
+        # Access the generated response text (assuming 'content' is the correct field)
+        advice = response.candidates[0].content
+        return advice
     except Exception as e:
         print(f"Error generating financial advice: {e}")
         return "No advice available at the moment."
+
+
+
