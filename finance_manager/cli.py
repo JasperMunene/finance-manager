@@ -29,3 +29,16 @@ def signup(name, email, password):
         click.echo("Email already exists. Please try a different email.")
     finally:
         db.close()
+
+@cli.command()
+@click.option('--email', prompt='Your email', help='Email of the user.')
+@click.option('--password', prompt='Your password', hide_input=True, help='Password of the user.')
+def login(email, password):
+    """Log in as a user."""
+    db = SessionLocal()
+    user = db.query(User).filter(User.email == email).first()
+    if user and bcrypt.verify(password, user.password_hash):
+        click.echo(f"Welcome back, {user.name}!")
+    else:
+        click.echo("Invalid email or password.")
+    db.close()
