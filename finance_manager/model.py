@@ -20,3 +20,15 @@ class Category(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(50), unique=True, nullable=False)
     transactions = relationship('Transaction', back_populates='category')
+
+class Transaction(Base):
+    __tablename__ = 'transactions'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    category_id = Column(Integer, ForeignKey('categories.id'), nullable=False)
+    amount = Column(Float, nullable=False)
+    type = Column(String(10), nullable=False)  # 'income' or 'expense'
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    user = relationship('User', back_populates='transactions')
+    category = relationship('Category', back_populates='transactions')
