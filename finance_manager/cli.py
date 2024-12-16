@@ -80,3 +80,37 @@ def add_transaction(description, amount, type):
     db.close()
 
 
+@cli.command()
+@click.option('--email', prompt='Your email', help='Email of the user.')
+def advice(email):
+    """Provide financial advice based on the user's transactions."""
+    db = SessionLocal()
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        click.echo("User not found. Please register first.")
+        db.close()
+        return
+
+    transactions = db.query(Transaction).filter(Transaction.user_id == user.id).all()
+    if not transactions:
+        click.echo("No transactions found.")
+        db.close()
+        return
+
+    formatted_transactions = [
+        {
+            'type': txn.type,
+            'amount': txn.amount,
+            'category': db.query(Category).filter(Category.id == txn.category_id).first().name
+        }
+        for txn in transactions
+    ]
+
+    advice = generate_financial_advice(formatted_transactions)
+    click.echo("Financial Advice:")
+    click.echo(advice)
+    db.close()
+
+
+if __name__ == '__main__':
+    cli()
