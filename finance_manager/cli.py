@@ -38,7 +38,7 @@ def cli():
     pass
 
 
-@cli.command()
+@click.command(help="Register a new user by providing their name, email, and password.")
 @click.option('--name', prompt='Your name', help='Name of the user.')
 @click.option('--email', prompt='Your email', help='Email of the user.')
 @click.option('--password', prompt='Your password', hide_input=True, confirmation_prompt=True, help='Password of the user.')
@@ -59,7 +59,7 @@ def signup(name, email, password):
         db.close()
 
 
-@cli.command()
+@click.command(help="Login a  user by providing their email, and password.")
 @click.option('--email', prompt='Your email', help='Email of the user.')
 @click.option('--password', prompt='Your password', hide_input=True, help='Password of the user.')
 def login(email, password):
