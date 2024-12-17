@@ -4,7 +4,7 @@ import click
 from passlib.hash import bcrypt
 from sqlalchemy.exc import IntegrityError
 from finance_manager.database import init_db, get_db, SessionLocal
-from finance_manager.models import User, Transaction, Category
+from finance_manager.models import User, Transaction, Category, Budget
 from finance_manager.ai import categorize_transaction, generate_financial_advice
 import os
 import json
@@ -178,6 +178,7 @@ def set_budget(category, amount):
 
     db = SessionLocal()
     try:
+        # Get the user from the database
         user = db.query(User).filter(User.email == email).first()
         if not user:
             click.echo("User not found. Please register first.")
@@ -189,15 +190,55 @@ def set_budget(category, amount):
             click.echo(f"Category '{category}' not found. Please add the category first.")
             return
 
-        # Set the budget
-        category_obj.budget = amount
+        # Check if a budget already exists for this category
+        existing_budget = db.query(Budget).filter(Budget.category_id == category_obj.id, Budget.user_id == user.id).first()
+        if existing_budget:
+            click.echo(f"A budget for '{category}' already exists. Updating the amount.")
+            existing_budget.amount = amount
+        else:
+            # Create a new budget record
+            new_budget = Budget(user_id=user.id, category_id=category_obj.id, amount=amount)
+            db.add(new_budget)
+
         db.commit()
-        click.echo(f"Budget of Ksh {amount} has been set for the '{category}' category.")
+        click.echo(f"Budget of Ksh {amount} has been set for {category}")
 
     except Exception as e:
         click.echo(f"An error occurred: {e}")
     finally:
         db.close()
+
+
+
+@cli.command()
+@click.option('--name', prompt='Category name', help='The name of the category to add.')
+def add_category(name):
+    """Add a new category to the finance manager."""
+    email = get_logged_in_user()
+    if not email:
+        click.echo("You must be logged in to add a category.")
+        return
+
+    db = SessionLocal()
+    try:
+        # Check if the category already exists
+        existing_category = db.query(Category).filter(Category.name == name).first()
+        if existing_category:
+            click.echo(f"Category '{name}' already exists.")
+            return
+
+        # Create a new category without a budget
+        new_category = Category(name=name)
+        db.add(new_category)
+        db.commit()
+        db.refresh(new_category)
+        click.echo(f"Category '{name}' added successfully!")
+
+    except Exception as e:
+        click.echo(f"An error occurred: {e}")
+    finally:
+        db.close()
+
 
 
 

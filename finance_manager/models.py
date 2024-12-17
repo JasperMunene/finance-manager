@@ -19,7 +19,6 @@ class Category(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(50), unique=True, nullable=False)
     transactions = relationship('Transaction', back_populates='category')
-    budget = Column(Float, nullable=True)
 
 class Transaction(Base):
     __tablename__ = 'transactions'
