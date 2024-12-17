@@ -11,7 +11,7 @@ model = genai.GenerativeModel('gemini-1.5-flash')
 
 
 def categorize_transaction(description):
-    prompt = f"Categorize the following transaction description into a standard financial category (e.g., Food, Utilities, Entertainment, etc.):"
+    prompt = f"Categorize the following transaction description into a standard financial category (e.g., Food, Utilities, Entertainment, etc.)."
 
     try:
         return model.generate_content([prompt, description],
@@ -33,9 +33,9 @@ def generate_financial_advice(transactions):
 
     # Create the prompt for generating advice
     prompt = f"""
-    Analyze the following financial transactions and provide actionable advice to improve savings and manage expenses:
-    Provide your advice in bullet points.
-    """
+        Analyze the following financial transactions (all amounts are in Kenyan Shillings, Ksh) and provide actionable advice to improve savings and manage expenses:
+        Provide your advice in bullet points.
+        """
 
     try:
         return model.generate_content([prompt, summary],

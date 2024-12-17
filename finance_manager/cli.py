@@ -37,8 +37,7 @@ def cli():
     """Finance Manager CLI"""
     pass
 
-
-@click.command(help="Register a new user by providing their name, email, and password.")
+@cli.command()
 @click.option('--name', prompt='Your name', help='Name of the user.')
 @click.option('--email', prompt='Your email', help='Email of the user.')
 @click.option('--password', prompt='Your password', hide_input=True, confirmation_prompt=True, help='Password of the user.')
@@ -58,8 +57,7 @@ def signup(name, email, password):
     finally:
         db.close()
 
-
-@click.command(help="Login a  user by providing their email, and password.")
+@cli.command()
 @click.option('--email', prompt='Your email', help='Email of the user.')
 @click.option('--password', prompt='Your password', hide_input=True, help='Password of the user.')
 def login(email, password):
@@ -167,6 +165,40 @@ def advice(email):
         click.echo(f"- {tip}")
 
     db.close()
+
+@cli.command()
+@click.option('--category', prompt='Category name', help='Name of the category to set a budget for.')
+@click.option('--amount', prompt='Budget amount', type=float, help='Budget amount in Ksh.')
+def set_budget(category, amount):
+    """Set a budget for a specific category."""
+    email = get_logged_in_user()
+    if not email:
+        click.echo("You must be logged in to set a budget.")
+        return
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            click.echo("User not found. Please register first.")
+            return
+
+        # Check if the category exists
+        category_obj = db.query(Category).filter(Category.name == category).first()
+        if not category_obj:
+            click.echo(f"Category '{category}' not found. Please add the category first.")
+            return
+
+        # Set the budget
+        category_obj.budget = amount
+        db.commit()
+        click.echo(f"Budget of Ksh {amount} has been set for the '{category}' category.")
+
+    except Exception as e:
+        click.echo(f"An error occurred: {e}")
+    finally:
+        db.close()
+
 
 
 @cli.command()
