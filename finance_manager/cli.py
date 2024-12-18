@@ -341,6 +341,42 @@ def transactions():
 
     db.close()
 
+@cli.command()
+def budgets():
+    """Display all budgets for the currently logged-in user."""
+    email = get_logged_in_user()
+    if not email:
+        click.echo("You must be logged in to view budgets.")
+        return
+
+    db = SessionLocal()
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        click.echo("User not found. Please register first.")
+        db.close()
+        return
+
+    # Fetch all budgets for the logged-in user
+    budgets = db.query(Budget).filter(Budget.user_id == user.id).all()
+    if not budgets:
+        click.echo("No budgets found.")
+        db.close()
+        return
+
+    # Prepare data for the table
+    table_data = []
+    for budget in budgets:
+        category_name = db.query(Category).filter(Category.id == budget.category_id).first().name
+        table_data.append([category_name, budget.amount])
+
+    # Define the table headers
+    headers = ["Category", "Budget Amount (Ksh)"]
+
+    # Display the table using tabulate
+    click.echo(tabulate(table_data, headers, tablefmt="grid"))
+
+    db.close()
+
 
 @cli.command()
 def logout():
