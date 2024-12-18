@@ -17,6 +17,7 @@ if [ $# -lt 1 ]; then
   echo "  signup             Register"
   echo "  simulate-scenario  Simulate a scenario based on transaction history."
   echo "  transactions       Display all transactions"
+  echo "  budgets            Display all budgets"
   echo ""
   echo "Use './fm.sh --help' for more information."
   exit 1
