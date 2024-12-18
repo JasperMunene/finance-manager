@@ -5,7 +5,7 @@ from passlib.hash import bcrypt
 from sqlalchemy.exc import IntegrityError
 from finance_manager.database import init_db, get_db, SessionLocal
 from finance_manager.models import User, Transaction, Category, Budget
-from finance_manager.ai import categorize_transaction, generate_financial_advice
+from finance_manager.ai import categorize_transaction, generate_financial_advice, simulate_financial_scenario
 import os
 import json
 from sqlalchemy import func

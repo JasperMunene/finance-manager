@@ -1,4 +1,6 @@
 import os
+
+from click import prompt
 from dotenv import load_dotenv
 import google.generativeai as genai
 
@@ -47,5 +49,22 @@ def generate_financial_advice(transactions):
         print(f"Error generating financial advice: {e}")
         return "No advice available at the moment."
 
+def simulate_financial_scenario(transactions, scenario):
+    summary = "\n".join([
+        f"{txn['type'].capitalize()}: {txn['amount']} in {txn['category']}"
+        for txn in transactions
+    ])
 
+    prompt = f"""
+            Given the following transactions: {summary}, (all amounts are in Kenyan Shillings, Ksh) simulate the financial impact of the following scenario:
+            {scenario}
+        """
+    try:
+        return model.generate_content([prompt],
+                                      generation_config=genai.GenerationConfig(
+                                          response_mime_type="application/json"
+                                      ))
+    except Exception as e:
+        print(f"Error suggesting budget adjustments: {e}")
+        return "No budget suggestions available."
 
