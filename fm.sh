@@ -3,6 +3,7 @@
 # The base command for the finance manager CLI
 BASE_COMMAND="python -m finance_manager.main"
 
+python3 finance_manager/banner.py
 # Check if a subcommand is provided
 if [ $# -lt 1 ]; then
   echo "Usage: ./fm.sh [COMMAND] [ARGS...]"
