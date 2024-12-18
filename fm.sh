@@ -18,6 +18,7 @@ if [ $# -lt 1 ]; then
   echo "  simulate-scenario  Simulate a scenario based on transaction history."
   echo "  transactions       Display all transactions"
   echo "  budgets            Display all budgets"
+  echo "  categories         Display all categories"
   echo ""
   echo "Use './fm.sh --help' for more information."
   exit 1

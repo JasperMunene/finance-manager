@@ -379,6 +379,32 @@ def budgets():
 
 
 @cli.command()
+def categories():
+    """Display all categories in the system."""
+    db = SessionLocal()
+
+    # Fetch all categories
+    categories = db.query(Category).all()
+    if not categories:
+        click.echo("No categories found.")
+        db.close()
+        return
+
+    # Prepare data for the table
+    table_data = []
+    for category in categories:
+        table_data.append([category.name])
+
+    # Define the table headers
+    headers = ["Category Name"]
+
+    # Display the table using tabulate
+    click.echo(tabulate(table_data, headers, tablefmt="grid"))
+
+    db.close()
+
+
+@cli.command()
 def logout():
     """Log out the current user"""
     email = get_logged_in_user()
