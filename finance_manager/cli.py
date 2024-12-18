@@ -8,6 +8,8 @@ from finance_manager.models import User, Transaction, Category, Budget
 from finance_manager.ai import categorize_transaction, generate_financial_advice
 import os
 import json
+from sqlalchemy import func
+
 
 # Initialize the database
 init_db()
@@ -77,7 +79,7 @@ def login(email, password):
 @click.option('--amount', prompt='Transaction amount', type=float, help='Amount of the transaction.')
 @click.option('--type', prompt='Transaction type (income/expense)', type=click.Choice(['income', 'expense']), help='Type of the transaction.')
 def add_transaction(description, amount, type):
-    """Add a new transaction for the currently logged-in user."""
+    """Add a new transaction for the currently logged-in user and track budget usage."""
     email = get_logged_in_user()
     if not email:
         click.echo("You must be logged in to add a transaction.")
@@ -117,10 +119,29 @@ def add_transaction(description, amount, type):
         db.commit()
         click.echo(f"Transaction added under category: {transaction_category}")
 
+        # Check against budget
+        if type == 'expense':
+            budget = db.query(Budget).filter(Budget.category_id == category.id, Budget.user_id == user.id).first()
+            if budget:
+                # Calculate total spending for the category
+                total_spent = db.query(Transaction).filter(
+                    Transaction.user_id == user.id,
+                    Transaction.category_id == category.id,
+                    Transaction.type == 'expense'
+                ).with_entities(func.sum(Transaction.amount)).scalar() or 0.0
+
+                # Compare total spent to budget
+                remaining_budget = budget.amount - total_spent
+                if remaining_budget < 0:
+                    click.echo(f"Alert: You have exceeded your budget for '{transaction_category}' by Ksh {abs(remaining_budget):.2f}!")
+                else:
+                    click.echo(f"Remaining budget for '{transaction_category}': Ksh {remaining_budget:.2f}")
+
     except Exception as e:
         click.echo(f"An error occurred: {e}")
     finally:
         db.close()
+
 
 
 
