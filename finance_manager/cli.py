@@ -403,6 +403,33 @@ def categories():
 
     db.close()
 
+@cli.command()
+def delete_transactions():
+    """Delete all transactions for the currently logged-in user."""
+    email = get_logged_in_user()
+    if not email:
+        click.echo("You must be logged in to delete transactions.")
+        return
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            click.echo("User not found.")
+            return
+
+        # Delete all transactions for the user
+        db.query(Transaction).filter(Transaction.user_id == user.id).delete()
+        db.commit()
+
+        click.echo("All transactions have been deleted successfully.")
+    except Exception as e:
+        db.rollback()
+        click.echo(f"An error occurred: {e}")
+    finally:
+        db.close()
+
+
 
 @cli.command()
 def logout():
