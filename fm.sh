@@ -15,7 +15,7 @@ if [ $# -lt 1 ]; then
   echo "  logout             Log out the current user."
   echo "  set-budget         Set a budget for a specific category."
   echo "  signup             Register a new user."
-  echo "  suggest-adjustment Suggest budget adjustments"
+  echo "  simulate-scenario  Simulate a scenario based on transaction history."
   echo ""
   echo "Use './fm.sh --help' for more information."
   exit 1

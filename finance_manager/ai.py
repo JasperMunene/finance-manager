@@ -56,9 +56,16 @@ def simulate_financial_scenario(transactions, scenario):
     ])
 
     prompt = f"""
-            Given the following transactions: {summary}, (all amounts are in Kenyan Shillings, Ksh) simulate the financial impact of the following scenario:
-            {scenario}
-        """
+    Given the following transactions: {summary} (all amounts are in Kenyan Shillings, Ksh), analyze the financial impact of the scenario below:
+    {scenario}
+    Provide a detailed and clear description of the impact.
+    Please generate a financial report in the following format:
+    {{
+        'analysis': '',
+        'impact': '',
+    }}
+    """
+
     try:
         return model.generate_content([prompt],
                                       generation_config=genai.GenerationConfig(

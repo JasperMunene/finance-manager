@@ -260,6 +260,51 @@ def add_category(name):
     finally:
         db.close()
 
+@cli.command()
+@click.option('--scenario', prompt='Scenario', help='The scenario to simulate.')
+def simulate_scenario(scenario):
+    """Simulate a scenario based on transaction history."""
+    email = get_logged_in_user()
+    if not email:
+        click.echo("You must be logged in to simulate scenarios.")
+        return
+
+    db = SessionLocal()
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        click.echo("User not found. Please register first.")
+        db.close()
+        return
+
+    transactions = db.query(Transaction).filter(Transaction.user_id == user.id).all()
+    if not transactions:
+        click.echo("No transactions found.")
+        db.close()
+        return
+
+    formatted_transactions = [
+        {
+            'type': txn.type,
+            'amount': txn.amount,
+            'category': db.query(Category).filter(Category.id == txn.category_id).first().name
+        }
+        for txn in transactions
+    ]
+
+    response = simulate_financial_scenario(formatted_transactions, scenario)
+    result = json.loads(response.text)
+    analysis = result.get("analysis", "No analysis found.")
+    impact = result.get("impact", "No impact found.")
+
+    click.echo("Analysis: ")
+    click.echo(analysis)
+
+    click.echo("Impact: ")
+    click.echo(impact)
+
+
+    db.close()
+
 
 
 
