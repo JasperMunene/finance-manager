@@ -1,14 +1,14 @@
-
-
 import click
 from passlib.hash import bcrypt
 from sqlalchemy.exc import IntegrityError
-from finance_manager.database import init_db, get_db, SessionLocal
+from finance_manager.database import init_db, SessionLocal
 from finance_manager.models import User, Transaction, Category, Budget
 from finance_manager.ai import categorize_transaction, generate_financial_advice, simulate_financial_scenario
 import os
 import json
 from sqlalchemy import func
+from tabulate import tabulate
+
 
 
 # Initialize the database
@@ -305,7 +305,41 @@ def simulate_scenario(scenario):
 
     db.close()
 
+@cli.command()
+def transactions():
+    """Display all transactions for the currently logged-in user."""
+    email = get_logged_in_user()
+    if not email:
+        click.echo("You must be logged in to view transactions.")
+        return
 
+    db = SessionLocal()
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        click.echo("User not found. Please register first.")
+        db.close()
+        return
+
+    # Fetch all transactions for the logged-in user
+    transactions = db.query(Transaction).filter(Transaction.user_id == user.id).all()
+    if not transactions:
+        click.echo("No transactions found.")
+        db.close()
+        return
+
+    # Prepare data for the table
+    table_data = []
+    for txn in transactions:
+        category_name = db.query(Category).filter(Category.id == txn.category_id).first().name
+        table_data.append([txn.timestamp.strftime('%Y-%m-%d %H:%M:%S'), txn.type, txn.amount, category_name])
+
+    # Define the table headers
+    headers = ["Date", "Type", "Amount (Ksh)", "Category"]
+
+    # Display the table using tabulate
+    click.echo(tabulate(table_data, headers, tablefmt="grid"))
+
+    db.close()
 
 
 @cli.command()
