@@ -125,7 +125,7 @@ def add_transaction(description, amount, type):
 
 
 @cli.command()
-def advice(email):
+def advice():
     """Provide financial advice based on the user's transactions."""
     email = get_logged_in_user()
     if not email:
@@ -244,7 +244,7 @@ def add_category(name):
 
 @cli.command()
 def logout():
-    """Log out the current user by removing their email from the session file and deleting the file."""
+    """Log out the current user"""
     email = get_logged_in_user()
     if not email:
         click.echo("You are not logged in.")
