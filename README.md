@@ -206,4 +206,4 @@ Feel free to reach out if you have any questions or suggestions!
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the terms of the MIT [License](LICENSE).
