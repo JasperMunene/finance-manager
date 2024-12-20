@@ -1,4 +1,3 @@
-import click
 from passlib.hash import bcrypt
 from sqlalchemy.exc import IntegrityError
 from finance_manager.database import init_db, SessionLocal
@@ -8,7 +7,6 @@ import os
 import json
 from sqlalchemy import func
 from tabulate import tabulate
-
 
 
 # Initialize the database
@@ -34,17 +32,16 @@ def remove_logged_in_user():
     if os.path.exists(SESSION_FILE):
         os.remove(SESSION_FILE)
 
-@click.group()
-def cli():
-    """Finance Manager CLI"""
-    pass
-
-@cli.command()
-@click.option('--name', prompt='Your name', help='Name of the user.')
-@click.option('--email', prompt='Your email', help='Email of the user.')
-@click.option('--password', prompt='Your password', hide_input=True, confirmation_prompt=True, help='Password of the user.')
-def signup(name, email, password):
+def signup():
     """Register a new user."""
+    name = input("Your name: ")
+    email = input("Your email: ")
+    password = input("Your password: ")
+    password_confirm = input("Confirm password: ")
+    if password != password_confirm:
+        print("Passwords do not match.")
+        return
+
     db = SessionLocal()
     try:
         hashed_password = bcrypt.hash(password)
@@ -52,44 +49,44 @@ def signup(name, email, password):
         db.add(user)
         db.commit()
         set_logged_in_user(email)  # Save email to session file after successful signup
-        click.echo(f"User registered and logged in successfully as {name}!")
+        print(f"User registered and logged in successfully as {name}!")
     except IntegrityError:
         db.rollback()
-        click.echo("Email already exists. Please try a different email.")
+        print("Email already exists. Please try a different email.")
     finally:
         db.close()
 
-@cli.command()
-@click.option('--email', prompt='Your email', help='Email of the user.')
-@click.option('--password', prompt='Your password', hide_input=True, help='Password of the user.')
-def login(email, password):
+def login():
     """Log in as a user."""
+    email = input("Your email: ")
+    password = input("Your password: ")
+
     db = SessionLocal()
     user = db.query(User).filter(User.email == email).first()
     if user and bcrypt.verify(password, user.password_hash):
         set_logged_in_user(email)  # Store the email of the logged-in user
-        click.echo(f"Welcome back, {user.name}!")
+        print(f"Welcome back, {user.name}!")
     else:
-        click.echo("Invalid email or password.")
+        print("Invalid email or password.")
     db.close()
 
 
-@cli.command()
-@click.option('--description', prompt='Transaction description', help='Description of the transaction.')
-@click.option('--amount', prompt='Transaction amount', type=float, help='Amount of the transaction.')
-@click.option('--type', prompt='Transaction type (income/expense)', type=click.Choice(['income', 'expense']), help='Type of the transaction.')
-def add_transaction(description, amount, type):
+def add_transaction():
     """Add a new transaction for the currently logged-in user and track budget usage."""
     email = get_logged_in_user()
     if not email:
-        click.echo("You must be logged in to add a transaction.")
+        print("You must be logged in to add a transaction.")
         return
+
+    description = input("Transaction description: ")
+    amount = float(input("Transaction amount: "))
+    type = input("Transaction type (income/expense): ")
 
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.email == email).first()
         if not user:
-            click.echo("User not found.")
+            print("User not found.")
             return
 
         # Categorize the transaction
@@ -98,11 +95,11 @@ def add_transaction(description, amount, type):
             result = json.loads(response.text)
             transaction_category = result.get("category")
         except (json.JSONDecodeError, AttributeError):
-            click.echo("Error categorizing the transaction.")
+            print("Error categorizing the transaction.")
             return
 
         if not transaction_category:
-            click.echo("Unable to determine the transaction category.")
+            print("Unable to determine the transaction category.")
             return
 
         # Fetch or create the category
@@ -117,7 +114,7 @@ def add_transaction(description, amount, type):
         transaction = Transaction(user_id=user.id, category_id=category.id, amount=amount, type=type)
         db.add(transaction)
         db.commit()
-        click.echo(f"Transaction added under category: {transaction_category}")
+        print(f"Transaction added under category: {transaction_category}")
 
         # Check against budget
         if type == 'expense':
@@ -133,36 +130,33 @@ def add_transaction(description, amount, type):
                 # Compare total spent to budget
                 remaining_budget = budget.amount - total_spent
                 if remaining_budget < 0:
-                    click.echo(f"Alert: You have exceeded your budget for '{transaction_category}' by Ksh {abs(remaining_budget):.2f}!")
+                    print(f"Alert: You have exceeded your budget for '{transaction_category}' by Ksh {abs(remaining_budget):.2f}!")
                 else:
-                    click.echo(f"Remaining budget for '{transaction_category}': Ksh {remaining_budget:.2f}")
+                    print(f"Remaining budget for '{transaction_category}': Ksh {remaining_budget:.2f}")
 
     except Exception as e:
-        click.echo(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
     finally:
         db.close()
 
 
-
-
-@cli.command()
 def advice():
     """Provide financial advice based on the user's transactions."""
     email = get_logged_in_user()
     if not email:
-        click.echo("You must be logged in to get financial advice.")
+        print("You must be logged in to get financial advice.")
         return
 
     db = SessionLocal()
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        click.echo("User not found. Please register first.")
+        print("User not found. Please register first.")
         db.close()
         return
 
     transactions = db.query(Transaction).filter(Transaction.user_id == user.id).all()
     if not transactions:
-        click.echo("No transactions found.")
+        print("No transactions found.")
         db.close()
         return
 
@@ -179,42 +173,43 @@ def advice():
     result = json.loads(response.text)
     analysis = result.get("analysis", "No analysis found.")
     advice = result.get("advice", [])
-    click.echo("Financial Analysis:")
-    click.echo(analysis)
-    click.echo("Advice:")
+    print("Financial Analysis:")
+    print(analysis)
+    print("Advice:")
     for tip in advice:
-        click.echo(f"- {tip}")
+        print(f"- {tip}")
 
     db.close()
 
-@cli.command()
-@click.option('--category', prompt='Category name', help='Name of the category to set a budget for.')
-@click.option('--amount', prompt='Budget amount', type=float, help='Budget amount in Ksh.')
-def set_budget(category, amount):
+
+def set_budget():
     """Set a budget for a specific category."""
     email = get_logged_in_user()
     if not email:
-        click.echo("You must be logged in to set a budget.")
+        print("You must be logged in to set a budget.")
         return
+
+    category = input("Category name: ")
+    amount = float(input("Budget amount (in Ksh): "))
 
     db = SessionLocal()
     try:
         # Get the user from the database
         user = db.query(User).filter(User.email == email).first()
         if not user:
-            click.echo("User not found. Please register first.")
+            print("User not found. Please register first.")
             return
 
         # Check if the category exists
         category_obj = db.query(Category).filter(Category.name == category).first()
         if not category_obj:
-            click.echo(f"Category '{category}' not found. Please add the category first.")
+            print(f"Category '{category}' not found. Please add the category first.")
             return
 
         # Check if a budget already exists for this category
         existing_budget = db.query(Budget).filter(Budget.category_id == category_obj.id, Budget.user_id == user.id).first()
         if existing_budget:
-            click.echo(f"A budget for '{category}' already exists. Updating the amount.")
+            print(f"A budget for '{category}' already exists. Updating the amount.")
             existing_budget.amount = amount
         else:
             # Create a new budget record
@@ -222,108 +217,32 @@ def set_budget(category, amount):
             db.add(new_budget)
 
         db.commit()
-        click.echo(f"Budget of Ksh {amount} has been set for {category}")
+        print(f"Budget of Ksh {amount} has been set for {category}")
 
     except Exception as e:
-        click.echo(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
     finally:
         db.close()
 
 
-
-@cli.command()
-@click.option('--name', prompt='Category name', help='The name of the category to add.')
-def add_category(name):
-    """Add a new category to the finance manager."""
-    email = get_logged_in_user()
-    if not email:
-        click.echo("You must be logged in to add a category.")
-        return
-
-    db = SessionLocal()
-    try:
-        # Check if the category already exists
-        existing_category = db.query(Category).filter(Category.name == name).first()
-        if existing_category:
-            click.echo(f"Category '{name}' already exists.")
-            return
-
-        # Create a new category without a budget
-        new_category = Category(name=name)
-        db.add(new_category)
-        db.commit()
-        db.refresh(new_category)
-        click.echo(f"Category '{name}' added successfully!")
-
-    except Exception as e:
-        click.echo(f"An error occurred: {e}")
-    finally:
-        db.close()
-
-@cli.command()
-@click.option('--scenario', prompt='Scenario', help='The scenario to simulate.')
-def simulate_scenario(scenario):
-    """Simulate a scenario based on transaction history."""
-    email = get_logged_in_user()
-    if not email:
-        click.echo("You must be logged in to simulate scenarios.")
-        return
-
-    db = SessionLocal()
-    user = db.query(User).filter(User.email == email).first()
-    if not user:
-        click.echo("User not found. Please register first.")
-        db.close()
-        return
-
-    transactions = db.query(Transaction).filter(Transaction.user_id == user.id).all()
-    if not transactions:
-        click.echo("No transactions found.")
-        db.close()
-        return
-
-    formatted_transactions = [
-        {
-            'type': txn.type,
-            'amount': txn.amount,
-            'category': db.query(Category).filter(Category.id == txn.category_id).first().name
-        }
-        for txn in transactions
-    ]
-
-    response = simulate_financial_scenario(formatted_transactions, scenario)
-    result = json.loads(response.text)
-    analysis = result.get("analysis", "No analysis found.")
-    impact = result.get("impact", "No impact found.")
-
-    click.echo("Analysis: ")
-    click.echo(analysis)
-
-    click.echo("Impact: ")
-    click.echo(impact)
-
-
-    db.close()
-
-@cli.command()
 def transactions():
     """Display all transactions for the currently logged-in user."""
     email = get_logged_in_user()
     if not email:
-        click.echo("You must be logged in to view transactions.")
+        print("You must be logged in to view transactions.")
         return
 
     db = SessionLocal()
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        click.echo("User not found. Please register first.")
+        print("User not found. Please register first.")
         db.close()
         return
 
     # Fetch all transactions for the logged-in user
     transactions = db.query(Transaction).filter(Transaction.user_id == user.id).all()
     if not transactions:
-        click.echo("No transactions found.")
+        print("No transactions found.")
         db.close()
         return
 
@@ -337,154 +256,48 @@ def transactions():
     headers = ["Date", "Type", "Amount (Ksh)", "Category"]
 
     # Display the table using tabulate
-    click.echo(tabulate(table_data, headers, tablefmt="grid"))
+    print(tabulate(table_data, headers, tablefmt="grid"))
 
     db.close()
 
-@cli.command()
-def budgets():
-    """Display all budgets for the currently logged-in user."""
+def logout():
+    """Log out the current user"""
     email = get_logged_in_user()
     if not email:
-        click.echo("You must be logged in to view budgets.")
+        print("You are not logged in.")
         return
 
-    db = SessionLocal()
-    user = db.query(User).filter(User.email == email).first()
-    if not user:
-        click.echo("User not found. Please register first.")
-        db.close()
-        return
+    remove_logged_in_user()  # Delete the session file
+    print(f"You have been logged out, {email}.")
 
-    # Fetch all budgets for the logged-in user
-    budgets = db.query(Budget).filter(Budget.user_id == user.id).all()
-    if not budgets:
-        click.echo("No budgets found.")
-        db.close()
-        return
+def quit_program():
+    """Quit the program."""
+    print("Goodbye!")
+    exit()
 
-    # Prepare data for the table
-    table_data = []
-    for budget in budgets:
-        category_name = db.query(Category).filter(Category.id == budget.category_id).first().name
-        table_data.append([category_name, budget.amount])
-
-    # Define the table headers
-    headers = ["Category", "Budget Amount (Ksh)"]
-
-    # Display the table using tabulate
-    click.echo(tabulate(table_data, headers, tablefmt="grid"))
-
-    db.close()
-
-
-@cli.command()
-def categories():
-    """Display all categories in the system."""
-    db = SessionLocal()
-
-    # Fetch all categories
-    categories = db.query(Category).all()
-    if not categories:
-        click.echo("No categories found.")
-        db.close()
-        return
-
-    # Prepare data for the table
-    table_data = []
-    for category in categories:
-        table_data.append([category.name])
-
-    # Define the table headers
-    headers = ["Category Name"]
-
-    # Display the table using tabulate
-    click.echo(tabulate(table_data, headers, tablefmt="grid"))
-
-    db.close()
-
-@cli.command()
-def delete_transactions():
-    """Delete all transactions for the currently logged-in user."""
-    email = get_logged_in_user()
-    if not email:
-        click.echo("You must be logged in to delete transactions.")
-        return
-
-    db = SessionLocal()
-    try:
-        user = db.query(User).filter(User.email == email).first()
-        if not user:
-            click.echo("User not found.")
-            return
-
-        # Delete all transactions for the user
-        db.query(Transaction).filter(Transaction.user_id == user.id).delete()
-        db.commit()
-
-        click.echo("All transactions have been deleted successfully.")
-    except Exception as e:
-        db.rollback()
-        click.echo(f"An error occurred: {e}")
-    finally:
-        db.close()
-
-@cli.command()
-@click.option('--name', prompt='Category name', help='The name of the category to delete.')
-def delete_category(name):
-    """Delete a category from the finance manager."""
-    email = get_logged_in_user()
-    if not email:
-        click.echo("You must be logged in to delete a category.")
-        return
-
-    db = SessionLocal()
-    try:
-        # Check if the category exists
-        category = db.query(Category).filter(Category.name == name).first()
-        if not category:
-            click.echo(f"Category '{name}' does not exist.")
-            return
-
-        # Check if the category has associated transactions
-        transactions = db.query(Transaction).filter(Transaction.category_id == category.id).all()
-        if transactions:
-            click.echo(f"Category '{name}' cannot be deleted because it has associated transactions.")
-            return
-
-        # Delete the category
-        db.delete(category)
-        db.commit()
-        click.echo(f"Category '{name}' deleted successfully!")
-
-    except Exception as e:
-        click.echo(f"An error occurred: {e}")
-    finally:
-        db.close()
-
-@cli.command()
-@click.option('--transaction-id', prompt='Transaction ID', type=int, help='ID of the transaction to update.')
-@click.option('--amount', prompt='New amount', type=float, required=False, help='New amount of the transaction.')
-@click.option('--type', prompt='New type (income/expense)', type=click.Choice(['income', 'expense']), required=False, help='New type of the transaction.')
-@click.option('--category', prompt='New category', required=False, help='New category of the transaction.')
-def update_transaction(transaction_id, amount, type, category):
+def update_transaction():
     """Update an existing transaction."""
+    
+    transaction_id = input("Transaction id")
+    amount = input("Amount")
+    type = input("Type")
+    category = input("Category")
     email = get_logged_in_user()
     if not email:
-        click.echo("You must be logged in to update a transaction.")
+        print("You must be logged in to update a transaction.")
         return
 
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.email == email).first()
         if not user:
-            click.echo("User not found.")
+            print("User not found.")
             return
 
         # Fetch the transaction
         transaction = db.query(Transaction).filter(Transaction.id == transaction_id, Transaction.user_id == user.id).first()
         if not transaction:
-            click.echo("Transaction not found.")
+            print("Transaction not found.")
             return
 
         # Update the transaction fields if new values are provided
@@ -512,25 +325,168 @@ def update_transaction(transaction_id, amount, type, category):
 
         # Commit the updates
         db.commit()
-        click.echo("Transaction updated successfully!")
+        print("Transaction updated successfully!")
 
     except Exception as e:
-        click.echo(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
     finally:
         db.close()
 
-
-@cli.command()
-def logout():
-    """Log out the current user"""
+def delete_transactions():
+    """Delete all transactions for the currently logged-in user."""
     email = get_logged_in_user()
     if not email:
-        click.echo("You are not logged in.")
+        print("You must be logged in to delete transactions.")
         return
 
-    remove_logged_in_user()  # Delete the session file
-    click.echo(f"You have been logged out, {email}.")
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            print("User not found.")
+            return
+
+        # Delete all transactions for the user
+        db.query(Transaction).filter(Transaction.user_id == user.id).delete()
+        db.commit()
+
+        print("All transactions have been deleted successfully.")
+    except Exception as e:
+        db.rollback()
+        print(f"An error occurred: {e}")
+    finally:
+        db.close()
+
+def simulate_scenario(scenario):
+    """Simulate a scenario based on transaction history."""
+    email = get_logged_in_user()
+    if not email:
+        print("You must be logged in to simulate scenarios.")
+        return
+
+    db = SessionLocal()
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        print("User not found. Please register first.")
+        db.close()
+        return
+
+    transactions = db.query(Transaction).filter(Transaction.user_id == user.id).all()
+    if not transactions:
+        print("No transactions found.")
+        db.close()
+        return
+
+    formatted_transactions = [
+        {
+            'type': txn.type,
+            'amount': txn.amount,
+            'category': db.query(Category).filter(Category.id == txn.category_id).first().name
+        }
+        for txn in transactions
+    ]
+
+    response = simulate_financial_scenario(formatted_transactions, scenario)
+    result = json.loads(response.text)
+    analysis = result.get("analysis", "No analysis found.")
+    impact = result.get("impact", "No impact found.")
+
+    print("Analysis: ")
+    print(analysis)
+
+    print("Impact: ")
+    print(impact)
+
+
+    db.close()
+    
+def set_budget(category, amount):
+    """Set a budget for a specific category."""
+    email = get_logged_in_user()
+    if not email:
+        print("You must be logged in to set a budget.")
+        return
+
+    db = SessionLocal()
+    try:
+        # Get the user from the database
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            print("User not found. Please register first.")
+            return
+
+        # Check if the category exists
+        category_obj = db.query(Category).filter(Category.name == category).first()
+        if not category_obj:
+            print(f"Category '{category}' not found. Please add the category first.")
+            return
+
+        # Check if a budget already exists for this category
+        existing_budget = db.query(Budget).filter(Budget.category_id == category_obj.id, Budget.user_id == user.id).first()
+        if existing_budget:
+            print(f"A budget for '{category}' already exists. Updating the amount.")
+            existing_budget.amount = amount
+        else:
+            # Create a new budget record
+            new_budget = Budget(user_id=user.id, category_id=category_obj.id, amount=amount)
+            db.add(new_budget)
+
+        db.commit()
+        print(f"Budget of Ksh {amount} has been set for {category}")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        db.close()
+def menu():
+    """Display the menu and handle user input."""
+    while True:
+        print("\nFinance Manager CLI")
+        print("1. Sign Up")
+        print("2. Log In")
+        print("3. Add Transaction")
+        print("4. Get Financial Advice")
+        print("5. Set Budget")
+        print("6. View Transactions")
+        print("7. Log Out")
+        print("8. Quit")
+        print("9. Update Transaction")
+        print("10. Advice")
+        print("11. Delete Transactions")
+        print("12. Simulate Scenario")
+        print("Enter a budget: ")
+
+        choice = input("Choose an option: ")
+
+        if choice == '1':
+            signup()
+        elif choice == '2':
+            login()
+        elif choice == '3':
+            add_transaction()
+        elif choice == '4':
+            advice()
+        elif choice == '5':
+            set_budget()
+        elif choice == '6':
+            transactions()
+        elif choice == '7':
+            logout()
+        elif choice == '8':
+            quit_program()
+        elif choice == '9':
+            update_transaction()
+        elif choice == '10':
+            advice()
+        elif choice == '11':
+            delete_transactions()
+        elif choice == '12':
+            scenario = input("Enter the scenario: ")
+            simulate_scenario(scenario)
+        
+        else:
+            print("Invalid choice. Please try again.")
 
 
 if __name__ == '__main__':
-    cli()
+    menu()
