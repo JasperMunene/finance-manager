@@ -21,6 +21,8 @@ if [ $# -lt 1 ]; then
   echo "  budgets             Display all budgets"
   echo "  categories          Display all categories"
   echo "  delete-transactions Delete all transactions for the currently logged-in user"
+  echo "  delete-category     Delete a category"
+  echo "  update-transaction  Update a transaction"
   echo ""
   echo "Use './fm.sh --help' for more information."
   exit 1

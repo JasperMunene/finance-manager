@@ -429,6 +429,95 @@ def delete_transactions():
     finally:
         db.close()
 
+@cli.command()
+@click.option('--name', prompt='Category name', help='The name of the category to delete.')
+def delete_category(name):
+    """Delete a category from the finance manager."""
+    email = get_logged_in_user()
+    if not email:
+        click.echo("You must be logged in to delete a category.")
+        return
+
+    db = SessionLocal()
+    try:
+        # Check if the category exists
+        category = db.query(Category).filter(Category.name == name).first()
+        if not category:
+            click.echo(f"Category '{name}' does not exist.")
+            return
+
+        # Check if the category has associated transactions
+        transactions = db.query(Transaction).filter(Transaction.category_id == category.id).all()
+        if transactions:
+            click.echo(f"Category '{name}' cannot be deleted because it has associated transactions.")
+            return
+
+        # Delete the category
+        db.delete(category)
+        db.commit()
+        click.echo(f"Category '{name}' deleted successfully!")
+
+    except Exception as e:
+        click.echo(f"An error occurred: {e}")
+    finally:
+        db.close()
+
+@cli.command()
+@click.option('--transaction-id', prompt='Transaction ID', type=int, help='ID of the transaction to update.')
+@click.option('--amount', prompt='New amount', type=float, required=False, help='New amount of the transaction.')
+@click.option('--type', prompt='New type (income/expense)', type=click.Choice(['income', 'expense']), required=False, help='New type of the transaction.')
+@click.option('--category', prompt='New category', required=False, help='New category of the transaction.')
+def update_transaction(transaction_id, amount, type, category):
+    """Update an existing transaction."""
+    email = get_logged_in_user()
+    if not email:
+        click.echo("You must be logged in to update a transaction.")
+        return
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            click.echo("User not found.")
+            return
+
+        # Fetch the transaction
+        transaction = db.query(Transaction).filter(Transaction.id == transaction_id, Transaction.user_id == user.id).first()
+        if not transaction:
+            click.echo("Transaction not found.")
+            return
+
+        # Update the transaction fields if new values are provided
+        if amount:
+            transaction.amount = amount
+        if type:
+            transaction.type = type
+
+        # Handle the category update
+        if category:
+            # Normalize the category name
+            category = category.strip().title()
+            
+            # Check if the category exists
+            existing_category = db.query(Category).filter_by(name=category).first()
+            if not existing_category:
+                # Create a new category if it doesn't exist
+                new_category = Category(name=category)
+                db.add(new_category)
+                db.commit()  # Commit to generate an ID for the new category
+                existing_category = new_category
+            
+            # Update the transaction's category_id
+            transaction.category_id = existing_category.id
+
+        # Commit the updates
+        db.commit()
+        click.echo("Transaction updated successfully!")
+
+    except Exception as e:
+        click.echo(f"An error occurred: {e}")
+    finally:
+        db.close()
 
 
 @cli.command()
